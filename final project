@@ -1,68 +1,72 @@
-let shapes = [];      
-let draggableShapes = []; 
-let targetSize = 60;  
-let dragSize = 50;    
-let matchedMessage = ""; 
-let colors = ["#FF5733", "#33FFBD", "#FF33A2", "#FFBD33"];
+let currentScreen = 'mainMenu';
 
 function setup() {
-  createCanvas(800, 400);
-  
-  shapes.push(new Shape(150, 100, targetSize, "circle", colors[0]));
-  shapes.push(new Shape(150, 200, targetSize, "square", colors[1]));
-  shapes.push(new Shape(150, 300, targetSize, "triangle", colors[2]));
-
-  // Create draggable shapes (right side)
-  draggableShapes.push(new DraggableShape(650, 100, dragSize, "circle", colors[0]));
-  draggableShapes.push(new DraggableShape(650, 200, dragSize, "square", colors[1]));
-  draggableShapes.push(new DraggableShape(650, 300, dragSize, "triangle", colors[2]));
+  createCanvas(800, 600);
+  textAlign(CENTER, CENTER);
+  textSize(32);
 }
 
 function draw() {
-  background(220);
+  if (currentScreen === 'mainMenu') {
+    background(100, 150, 200); 
+    drawMainMenu();
+  } else if (currentScreen === 'game1') {
+    background(150, 200, 100); 
+    drawGamePlaceholder("Game 1", color(255, 140, 0), color(255, 180, 100)); 
+  } else if (currentScreen === 'game2') {
+    background(200, 100, 150); 
+    drawGamePlaceholder("Game 2", color(70, 130, 180), color(100, 180, 230)); 
+  }
+}
+
+function drawMainMenu() {
+  fill(255);
+  text("Main Menu", width / 2, height / 4);
 
   
-  textSize(18);
-  fill(0);
-  text("Drag the shapes to match the targets!", 250, 30);
+  drawButton(width / 2 - 150, height / 2, 200, 50, "Game 1", 
+             color(50, 205, 50), color(144, 238, 144), function() {
+    currentScreen = 'game1';
+  });
+
+  
+  drawButton(width / 2 + 150, height / 2, 200, 50, "Game 2", 
+             color(255, 99, 71), color(255, 160, 122), function() {
+    currentScreen = 'game2';
+  });
+}
+
+function drawGamePlaceholder(gameTitle, buttonColor, hoverColor) {
+  fill(255);
+  text(gameTitle, width / 2, height / 4);
+
+  
+  drawButton(width / 2, height / 2, 200, 50, "Back to Main Menu", 
+             buttonColor, hoverColor, function() {
+    currentScreen = 'mainMenu';
+  });
+}
+
+
+function drawButton(x, y, w, h, label, baseColor, hoverColor, onClick) {
+  
+  let isHovered = mouseX > x - w / 2 && mouseX < x + w / 2 &&
+                  mouseY > y - h / 2 && mouseY < y + h / 2;
+
+  
+  fill(isHovered ? hoverColor : baseColor);
+  stroke(0);
+  strokeWeight(2);
+  rectMode(CENTER);
+  rect(x, y, w, h, 10);
+
+  
+  fill(255);
   textSize(24);
-  fill("blue");
-  text(matchedMessage, 250, height - 30);
+  text(label, x, y);
 
   
-  for (let shape of shapes) {
-    shape.display();
-  }
-
-  
-  for (let draggable of draggableShapes) {
-    draggable.display();
-    draggable.update();
-  }
-}
-
-function mouseReleased() {
-  matchedMessage = ""; 
-  
-  for (let draggable of draggableShapes) {
-    for (let target of shapes) {
-      
-      if (draggable.isNear(target)) {
-        if (draggable.shapeType === target.shapeType && draggable.color === target.color) {
-          matchedMessage = "Matched!";
-          draggable.lockToTarget(target); 
-        } else {
-          matchedMessage = "Incorrect!";
-        }
-      }
-class Shape{
-constructor(x,y,size,shapeType, color){
-this.x=x;
-this.y=y;
-this.size=size;
-this.shapeType=shapeType;
-this.color=color;
-}
-    }
+  if (isHovered && mouseIsPressed) {
+    onClick();
   }
 }
