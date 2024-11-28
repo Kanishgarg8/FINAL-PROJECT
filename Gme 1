@@ -1,0 +1,125 @@
+let shapes = [];      
+let draggableShapes = []; 
+let targetSize = 60;  
+let dragSize = 50;    
+let matchedMessage = ""; 
+let colors = ["#FF5733", "#33FFBD", "#FF33A2", "#FFBD33"];
+
+function setup() {
+  createCanvas(800, 400);
+  
+  shapes.push(new Shape(150, 100, targetSize, "circle", colors[0]));
+  shapes.push(new Shape(150, 200, targetSize, "square", colors[1]));
+  shapes.push(new Shape(150, 300, targetSize, "triangle", colors[2]));
+
+  
+  draggableShapes.push(new DraggableShape(650, 100, dragSize, "circle", colors[0]));
+  draggableShapes.push(new DraggableShape(650, 200, dragSize, "square", colors[1]));
+  draggableShapes.push(new DraggableShape(650, 300, dragSize, "triangle", colors[2]));
+}
+
+function draw() {
+  background(220);
+
+  
+  textSize(18);
+  fill(0);
+  text("Drag the shapes to match the targets!", 250, 30);
+  textSize(24);
+  fill("blue");
+  text(matchedMessage, 250, height - 30);
+
+ 
+  for (let shape of shapes) {
+    shape.display();
+  }
+
+  
+  for (let draggable of draggableShapes) {
+    draggable.display();
+    draggable.update();
+  }
+}
+
+function mouseReleased() {
+  matchedMessage = ""; 
+  
+  for (let draggable of draggableShapes) {
+    for (let target of shapes) {
+      
+      if (draggable.isNear(target)) {
+        if (draggable.shapeType === target.shapeType && draggable.color === target.color) {
+          matchedMessage = "Matched!";
+          draggable.lockToTarget(target); 
+        } else {
+          matchedMessage = "Incorrect!";
+        }
+      }
+    }
+  }
+}
+
+
+class Shape {
+  constructor(x, y, size, shapeType, color) {
+    this.x = x;
+    this.y = y;
+    this.size = size;
+    this.shapeType = shapeType;
+    this.color = color;
+  }
+
+  display() {
+    fill(this.color);
+    noStroke();
+    if (this.shapeType === "circle") {
+      ellipse(this.x, this.y, this.size);
+    } else if (this.shapeType === "square") {
+      rect(this.x - this.size / 2, this.y - this.size / 2, this.size, this.size);
+    } else if (this.shapeType === "triangle") {
+      triangle(
+        this.x, this.y - this.size / 2,
+        this.x - this.size / 2, this.y + this.size / 2,
+        this.x + this.size / 2, this.y + this.size / 2
+      );
+    }
+  }
+}
+
+
+class DraggableShape extends Shape {
+  constructor(x, y, size, shapeType, color) {
+    super(x, y, size, shapeType, color);
+    this.dragging = false;
+  }
+
+  update() {
+    
+    if (this.dragging) {
+      this.x = mouseX;
+      this.y = mouseY;
+    }
+  }
+
+  display() {
+    super.display();
+    if (mouseIsPressed && this.isMouseOver()) {
+      this.dragging = true;
+    } else {
+      this.dragging = false;
+    }
+  }
+
+  isMouseOver() {
+    return dist(mouseX, mouseY, this.x, this.y) < this.size / 2;
+  }
+
+  isNear(target) {
+    return dist(this.x, this.y, target.x, target.y) < targetSize / 2;
+  }
+
+  lockToTarget(target) {
+    this.x = target.x;
+    this.y = target.y;
+  }
+}
