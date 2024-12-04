@@ -1,0 +1,305 @@
+let currentScreen = 'mainMenu';
+let timer = 30; 
+let score = 0;
+let gameInterval;
+
+
+let snake = [];
+let snakeDir;
+let food;
+let snakeSize = 20;
+
+
+let path = [];
+let pathTolerance = 30;
+let lineFollowed = true;
+
+
+let shapes = [];
+let draggableShapes = [];
+let targetSize = 60;
+let dragSize = 50;
+let matchedMessage = "";
+let colors = ["#FF5733", "#33FFBD", "#FF33A2", "#FFBD33"];
+
+function setup() {
+  createCanvas(800, 600);
+  textAlign(CENTER, CENTER);
+  textSize(32);
+
+  
+  resetSnake();
+
+  
+  for (let i = 0; i < 10; i++) {
+    path.push({ x: random(100, 700), y: i * 50 + 50 });
+  }
+
+ 
+  shapes.push(new Shape(150, 100, targetSize, "circle", colors[0]));
+  shapes.push(new Shape(150, 200, targetSize, "square", colors[1]));
+  shapes.push(new Shape(150, 300, targetSize, "triangle", colors[2]));
+
+  draggableShapes.push(new DraggableShape(650, 100, dragSize, "circle", colors[0]));
+  draggableShapes.push(new DraggableShape(650, 200, dragSize, "square", colors[1]));
+  draggableShapes.push(new DraggableShape(650, 300, dragSize, "triangle", colors[2]));
+}
+
+function draw() {
+  background(0);
+
+  if (currentScreen === 'mainMenu') {
+    drawMainMenu();
+  } else if (currentScreen === 'snake') {
+    drawSnakeGame();
+  } else if (currentScreen === 'follow') {
+    drawFollowTheLine();
+  } else if (currentScreen === 'shapeMatch') {
+    drawShapeMatchGame();
+  }
+}
+
+
+function drawMainMenu() {
+  
+  for (let y = 0; y < height; y++) {
+    stroke(lerpColor(color('#6A0572'), color('#03A9F4'), y / height));
+    line(0, y, width, y);
+  }
+
+  fill(255);
+  text("Main Menu", width / 2, height / 4);
+
+  drawButton(width / 2 - 200, height / 2, 200, 50, "Snake", color(50, 205, 50), color(144, 238, 144), function() {
+    startGame('snake');
+  });
+
+  drawButton(width / 2, height / 2, 200, 50, "Follow the Line", color(255, 99, 71), color(255, 160, 122), function() {
+    startGame('follow');
+  });
+
+  drawButton(width / 2 + 200, height / 2, 200, 50, "Shape Matching", color(70, 130, 180), color(100, 180, 230), function() {
+    startGame('shapeMatch');
+  });
+}
+
+
+function drawSnakeGame() {
+  fill(255);
+  textSize(24);
+  text("Timer: " + Math.floor(timer), width / 2, 50);
+  text("Score: " + score, width / 2, 80);
+
+  if (frameCount % 10 === 0) moveSnake();
+
+  
+  if (dist(snake[0].x, snake[0].y, food.x, food.y) < snakeSize) {
+    score++;
+    
+    snake.push({ ...snake[snake.length - 1] });
+    
+    food = { x: floor(random(width / snakeSize)) * snakeSize, y: floor(random(height / snakeSize)) * snakeSize };
+  }
+
+  
+  if (
+    snake[0].x < 0 || snake[0].x >= width ||
+    snake[0].y < 0 || snake[0].y >= height ||
+    snake.slice(1).some(seg => seg.x === snake[0].x && seg.y === snake[0].y)
+  ) {
+    endGame();
+    return;
+  }
+
+  
+  for (let seg of snake) {
+    fill(0, 255, 0);
+    rect(seg.x, seg.y, snakeSize, snakeSize);
+  }
+
+  
+  fill(255, 0, 0);
+  rect(food.x, food.y, snakeSize, snakeSize);
+}
+
+function resetSnake() {
+  snake = [{ x: 200, y: 200 }];
+  snakeDir = { x: snakeSize, y: 0 };
+  food = { x: floor(random(width / snakeSize)) * snakeSize, y: floor(random(height / snakeSize)) * snakeSize };
+}
+
+function moveSnake() {
+  let newHead = { x: snake[0].x + snakeDir.x, y: snake[0].y + snakeDir.y };
+  snake.unshift(newHead);
+  snake.pop();
+}
+
+function keyPressed() {
+  if (currentScreen === 'snake') {
+    if (keyCode === UP_ARROW) snakeDir = { x: 0, y: -snakeSize };
+    else if (keyCode === DOWN_ARROW) snakeDir = { x: 0, y: snakeSize };
+    else if (keyCode === LEFT_ARROW) snakeDir = { x: -snakeSize, y: 0 };
+    else if (keyCode === RIGHT_ARROW) snakeDir = { x: snakeSize, y: 0 };
+  }
+}
+
+
+function drawFollowTheLine() {
+  fill(255);
+  textSize(24);
+  text("Timer: " + Math.floor(timer), width / 2, 50);
+  text("Score: " + score, width / 2, 80);
+
+  stroke(255);
+  noFill();
+  beginShape();
+  for (let pt of path) {
+    vertex(pt.x, pt.y);
+  }
+  endShape();
+
+  let onPath = path.some(pt => dist(mouseX, mouseY, pt.x, pt.y) < pathTolerance);
+  if (!onPath) {
+    lineFollowed = false;
+  }
+
+  if (!lineFollowed) {
+    fill(255, 0, 0);
+    text("You Strayed!", width / 2, height / 2);
+    endGame();
+  } else {
+    fill(0, 255, 0);
+    ellipse(mouseX, mouseY, 20, 20);
+  }
+}
+
+
+function drawShapeMatchGame() {
+  fill(255);
+  textSize(24);
+  text("Timer: " + Math.floor(timer), width / 2, 50);
+  text("Score: " + score, width / 2, 80);
+
+  for (let shape of shapes) {
+    shape.display();
+  }
+
+  for (let draggable of draggableShapes) {
+    draggable.display();
+    draggable.update();
+  }
+}
+
+function mouseReleased() {
+  if (currentScreen === 'shapeMatch') {
+    matchedMessage = "";
+    for (let draggable of draggableShapes) {
+      for (let target of shapes) {
+        if (draggable.isNear(target)) {
+          if (draggable.shapeType === target.shapeType && draggable.color === target.color) {
+            matchedMessage = "Matched!";
+            score++;
+            draggable.lockToTarget(target);
+          } else {
+            matchedMessage = "Incorrect!";
+          }
+        }
+      }
+    }
+  }
+}
+
+
+function drawButton(x, y, w, h, label, baseColor, hoverColor, onClick) {
+  let isHovered = mouseX > x - w / 2 && mouseX < x + w / 2 &&
+                  mouseY > y - h / 2 && mouseY < y + h / 2;
+
+  fill(isHovered ? hoverColor : baseColor);
+  stroke(0);
+  strokeWeight(2);
+  rectMode(CENTER);
+  rect(x, y, w, h, 10);
+
+  fill(255);
+  textSize(24);
+  text(label, x, y);
+
+  if (isHovered && mouseIsPressed) {
+    onClick();
+  }
+}
+
+function startGame(game) {
+  currentScreen = game;
+  timer = 30;
+  score = 0;
+
+  gameInterval = setInterval(() => {
+    if (timer > 0) {
+      timer--;
+    } else {
+      endGame();
+    }
+  }, 1000);
+}
+
+function endGame() {
+  clearInterval(gameInterval);
+  currentScreen = 'mainMenu';
+}
+
+
+class Shape {
+  constructor(x, y, size, shapeType, color) {
+    this.x = x;
+    this.y = y;
+    this.size = size;
+    this.shapeType = shapeType;
+    this.color = color;
+  }
+
+  display() {
+    fill(this.color);
+    noStroke();
+    if (this.shapeType === "circle") ellipse(this.x, this.y, this.size);
+    else if (this.shapeType === "square") rect(this.x - this.size / 2, this.y - this.size / 2, this.size, this.size);
+    else if (this.shapeType === "triangle") triangle(
+      this.x, this.y - this.size / 2,
+      this.x - this.size / 2, this.y + this.size / 2,
+      this.x + this.size / 2, this.y + this.size / 2
+    );
+  }
+}
+
+class DraggableShape extends Shape {
+  constructor(x, y, size, shapeType, color) {
+    super(x, y, size, shapeType, color);
+    this.dragging = false;
+  }
+
+  update() {
+    if (this.dragging) {
+      this.x = mouseX;
+      this.y = mouseY;
+    }
+  }
+
+  display() {
+    super.display();
+    if (mouseIsPressed && this.isMouseOver()) this.dragging = true;
+    else this.dragging = false;
+  }
+
+  isMouseOver() {
+    return dist(mouseX, mouseY, this.x, this.y) < this.size / 2;
+  }
+
+  isNear(target) {
+    return dist(this.x, this.y, target.x, target.y) < targetSize / 2;
+  }
+
+  lockToTarget(target) {
+    this.x = target.x;
+    this.y = target.y;
+  }
+}
