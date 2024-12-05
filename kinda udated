@@ -1,0 +1,337 @@
+let currentScreen = 'mainMenu';
+let score = 0;
+
+// Snake Game Variables
+let snake = [];
+let snakeDir;
+let food;
+let snakeSize = 20;
+
+// Follow the Line Variables
+let points = [];
+let pathRadius = 20; // Allowed radius to follow the path
+let following = true;
+
+// Shape Matching Variables
+let shapes = [];
+let draggableShapes = [];
+let targetSize = 60;
+let dragSize = 50;
+let matchedMessage = "";
+let colors = ["#FF5733", "#33FFBD", "#FF33A2", "#FFBD33"];
+let targets = [];
+
+function setup() {
+  createCanvas(800, 600);
+  textAlign(CENTER, CENTER);
+  textSize(32);
+
+  // Initialize Snake Game
+  resetSnake();
+
+  // Initialize Follow the Line Game
+  for (let i = 0; i <= 10; i++) {
+    points.push({ x: i * 80, y: height / 2 + sin(i) * 50 });
+  }
+
+  // Initialize Shape Matching Game
+  shapes = [
+    new DraggableShape(650, 100, dragSize, "circle", colors[0]),
+    new DraggableShape(650, 200, dragSize, "square", colors[1]),
+    new DraggableShape(650, 300, dragSize, "triangle", colors[2]),
+  ];
+
+  targets = [
+    new TargetShape(150, 100, targetSize, "circle", colors[0]),
+    new TargetShape(150, 200, targetSize, "square", colors[1]),
+    new TargetShape(150, 300, targetSize, "triangle", colors[2]),
+  ];
+}
+
+function draw() {
+  background(0);
+
+  if (currentScreen === 'mainMenu') {
+    drawMainMenu();
+  } else if (currentScreen === 'snake') {
+    drawSnakeGame();
+  } else if (currentScreen === 'shapeMatch') {
+    drawShapeMatchGame();
+  } else if (currentScreen === 'follow') {
+    drawFollowTheLineGame();
+  }
+}
+
+// Main Menu
+function drawMainMenu() {
+  for (let y = 0; y < height; y++) {
+    stroke(lerpColor(color('#6A0572'), color('#03A9F4'), y / height));
+    line(0, y, width, y);
+  }
+
+  fill(255);
+  text("Main Menu", width / 2, height / 4);
+
+  drawButton(width / 2 - 200, height / 2, 200, 50, "Snake", color(50, 205, 50), color(144, 238, 144), function () {
+    startGame('snake');
+  });
+
+  drawButton(width / 2, height / 2, 200, 50, "Follow the Line", color(255, 99, 71), color(255, 160, 122), function () {
+    startGame('follow');
+  });
+
+  drawButton(width / 2 + 200, height / 2, 200, 50, "Shape Matching", color(70, 130, 180), color(100, 180, 230), function () {
+    startGame('shapeMatch');
+  });
+}
+
+// Snake Game Logic
+function drawSnakeGame() {
+  fill(255);
+  textSize(24);
+  text("Score: " + score, width / 2, 50);
+
+  if (frameCount % 10 === 0) moveSnake();
+
+  // Check collision with food
+  if (dist(snake[0].x, snake[0].y, food.x, food.y) < snakeSize) {
+    score++;
+    snake.push({ ...snake[snake.length - 1] }); // Extend snake
+    food = { 
+      x: floor(random(width / snakeSize)) * snakeSize, 
+      y: floor(random(height / snakeSize)) * snakeSize 
+    }; // Place new food
+  }
+
+  // Check collision with walls or itself
+  if (
+    snake[0].x < 0 || snake[0].x >= width ||
+    snake[0].y < 0 || snake[0].y >= height ||
+    snake.slice(1).some(seg => seg.x === snake[0].x && seg.y === snake[0].y)
+  ) {
+    endGame();
+    return;
+  }
+
+  // Draw snake
+  for (let seg of snake) {
+    fill(0, 255, 0);
+    rect(seg.x, seg.y, snakeSize, snakeSize);
+  }
+
+  // Draw food
+  fill(255, 0, 0);
+  rect(food.x, food.y, snakeSize, snakeSize);
+}
+
+function resetSnake() {
+  snake = [{ x: 200, y: 200 }];
+  snakeDir = { x: snakeSize, y: 0 };
+  food = { 
+    x: floor(random(width / snakeSize)) * snakeSize, 
+    y: floor(random(height / snakeSize)) * snakeSize 
+  };
+}
+
+function moveSnake() {
+  let newHead = { x: snake[0].x + snakeDir.x, y: snake[0].y + snakeDir.y };
+  snake.unshift(newHead);
+  snake.pop();
+}
+
+function keyPressed() {
+  if (currentScreen === 'snake') {
+    if (keyCode === UP_ARROW) snakeDir = { x: 0, y: -snakeSize };
+    else if (keyCode === DOWN_ARROW) snakeDir = { x: 0, y: snakeSize };
+    else if (keyCode === LEFT_ARROW) snakeDir = { x: -snakeSize, y: 0 };
+    else if (keyCode === RIGHT_ARROW) snakeDir = { x: snakeSize, y: 0 };
+  }
+}
+
+// Follow the Line Game Logic
+function drawFollowTheLineGame() {
+  background(240);
+
+  // Draw the path
+  stroke(0);
+  strokeWeight(4);
+  noFill();
+  beginShape();
+  for (let p of points) {
+    vertex(p.x, p.y);
+  }
+  endShape();
+
+  // Draw the allowed path radius
+  stroke(200, 100, 100, 100);
+  strokeWeight(pathRadius * 2);
+  noFill();
+  beginShape();
+  for (let p of points) {
+    vertex(p.x, p.y);
+  }
+  endShape();
+
+  // Check if the mouse is within the path
+  following = isMouseOnPath();
+
+  // Display feedback
+  if (following) {
+    fill(0, 255, 0);
+  } else {
+    fill(255, 0, 0);
+  }
+
+  ellipse(mouseX, mouseY, 15, 15);
+
+  // Check if the player reached the end
+  if (dist(mouseX, mouseY, points[points.length - 1].x, points[points.length - 1].y) < pathRadius) {
+    noLoop(); // Stop the game
+    textSize(32);
+    fill(0);
+    textAlign(CENTER, CENTER);
+    text("You Win!", width / 2, height / 2);
+  }
+}
+
+function isMouseOnPath() {
+  for (let i = 0; i < points.length - 1; i++) {
+    let start = points[i];
+    let end = points[i + 1];
+    let d = distToSegment(mouseX, mouseY, start, end);
+    if (d < pathRadius) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function distToSegment(px, py, v, w) {
+  const l2 = dist(v.x, v.y, w.x, w.y) ** 2;
+  if (l2 === 0) return dist(px, py, v.x, v.y);
+  const t = max(0, min(1, ((px - v.x) * (w.x - v.x) + (py - v.y) * (w.y - v.y)) / l2));
+  const projection = createVector(v.x + t * (w.x - v.x), v.y + t * (w.y - v.y));
+  return dist(px, py, projection.x, projection.y);
+}
+
+// Shape Matching Game Logic
+function drawShapeMatchGame() {
+  fill(255);
+  textSize(24);
+  text("Score: " + score, width / 2, 50);
+
+  for (let target of targets) {
+    target.display();
+  }
+
+  for (let draggable of shapes) {
+    draggable.display();
+    draggable.update();
+  }
+}
+
+function mouseReleased() {
+  if (currentScreen === 'shapeMatch') {
+    matchedMessage = "";
+    for (let draggable of shapes) {
+      for (let target of targets) {
+        if (draggable.isNear(target)) {
+          if (draggable.shapeType === target.shapeType && draggable.color === target.color) {
+            matchedMessage = "Matched!";
+            score++;
+            draggable.lockToTarget(target);
+          } else {
+            matchedMessage = "Incorrect!";
+          }
+        }
+      }
+    }
+  }
+}
+
+// Utility Functions
+function drawButton(x, y, w, h, label, baseColor, hoverColor, onClick) {
+  let isHovered = mouseX > x - w / 2 && mouseX < x + w / 2 &&
+    mouseY > y - h / 2 && mouseY < y + h / 2;
+
+  fill(isHovered ? hoverColor : baseColor);
+  stroke(0);
+  strokeWeight(2);
+  rectMode(CENTER);
+  rect(x, y, w, h, 10);
+
+  fill(255);
+  textSize(24);
+  text(label, x, y);
+
+  if (isHovered && mouseIsPressed) {
+    onClick();
+  }
+}
+
+function startGame(game) {
+  currentScreen = game;
+  score = 0;
+  loop();
+}
+
+function endGame() {
+  currentScreen = 'mainMenu';
+  noLoop();
+}
+
+// Classes for Shapes
+class TargetShape {
+  constructor(x, y, size, shapeType, color) {
+    this.x = x;
+    this.y = y;
+    this.size = size;
+    this.shapeType = shapeType;
+    this.color = color;
+  }
+
+  display() {
+    fill(this.color);
+    noStroke();
+    if (this.shapeType === "circle") ellipse(this.x, this.y, this.size);
+    else if (this.shapeType === "square") rect(this.x - this.size / 2, this.y - this.size / 2, this.size, this.size);
+    else if (this.shapeType === "triangle") triangle(
+      this.x, this.y - this.size / 2,
+      this.x - this.size / 2, this.y + this.size / 2,
+      this.x + this.size / 2, this.y + this.size / 2
+    );
+  }
+}
+
+class DraggableShape extends TargetShape {
+  constructor(x, y, size, shapeType, color) {
+    super(x, y, size, shapeType, color);
+    this.dragging = false;
+  }
+
+  update() {
+    if (this.dragging) {
+      this.x = mouseX;
+      this.y = mouseY;
+    }
+  }
+
+  display() {
+    super.display();
+    if (mouseIsPressed && this.isMouseOver()) this.dragging = true;
+    else this.dragging = false;
+  }
+
+  isMouseOver() {
+    return dist(mouseX, mouseY, this.x, this.y) < this.size / 2;
+  }
+
+  isNear(target) {
+    return dist(this.x, this.y, target.x, target.y) < targetSize / 2;
+  }
+
+  lockToTarget(target) {
+    this.x = target.x;
+    this.y = target.y;
+  }
+}
